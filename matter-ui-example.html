@@ -1,0 +1,149 @@
+<script src='https://cdn.jsdelivr.net/gh/liabru/matter-js@0.20.0/build/matter.js'></script>
+
+<canvas id="canvasM" data-pixel-ratio="2" style="position:relative; z-index:0;"></canvas>
+<script>
+    // module aliases
+    var Engine = Matter.Engine,
+        Render = Matter.Render,
+        Runner = Matter.Runner,
+        Bodies = Matter.Bodies,
+        Composite = Matter.Composite,
+        Body = Matter.Body,
+        Events = Matter.Events;
+    World = Matter.World;
+    const G = 1;
+    var mouse;
+    let path = [];
+    // create an engine
+    var engine = Engine.create({
+        gravity: { x: 0, y: 1, scale: 0 }
+    });
+    
+    world = engine.world;
+
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+
+    // create two boxes and a ground
+    let centerBody = Bodies.circle(w / 2, h / 2, 10, { isStatic: true });
+    Body.setMass(centerBody, 10)
+    let circleA = Bodies.circle(300,100,5,{"frictionAir":0});
+    let circleB = Bodies.circle(300,300,5,{"mass":12,"frictionAir":0});
+    let circleC = Bodies.circle(300,550,5,{"frictionAir":0});
+    let circleD = Bodies.circle(200,100,3,{"frictionAir":0});
+    console.log(circleA.mass*100000)
+    let orbv = Math.sqrt((G*circleB.mass*264)/(200))
+    let orbvc = Math.sqrt((G*circleB.mass*264)/(250))
+    // console.log(`orbv:${orbv}`)
+    let testCircle = Bodies.circle(0,0,10)
+    console.log(testCircle.velocity)
+    Body.applyForce(testCircle,testCircle.position,{"x":10,"y":10})
+    console.log(testCircle.velocity)
+    Body.setVelocity(circleC,{"x":-orbvc,"y":0})
+    Body.setVelocity(circleA,{"x":orbv,"y":0})
+    
+    // var boxA = Bodies.rectangle(.5 * w + 30, .7 * h, 80, 80);
+    // var boxB = Bodies.rectangle(.5 * w + 60, 50, 80, 80);
+    var ground = Bodies.rectangle(.5 * w - 1, .888 * h + .05 * h - 30 + 1.5, w, .1 * h, { isStatic: true });
+
+    // add all of the bodies to the world
+    Composite.add(engine.world,
+        [circleA,circleB,circleC]);
+
+
+    function calculateGravity(planet, moon) {
+        let pMass = planet.mass;
+        let mMass = moon.mass;
+        // console.log(mMass);
+        let g = G;
+        let distanceX = planet.position.x - moon.position.x
+        let distanceY = planet.position.y - moon.position.y
+        let distance = Math.sqrt(((planet.position.x - moon.position.x) ** 2) + ((planet.position.y - moon.position.y) ** 2))
+        let force = (g * mMass * pMass) / (distance ** 2);
+        // console.log(force)
+        let forceVector = { "x": Math.cos(Math.atan2(distanceY, distanceX)) * force, "y": Math.sin(Math.atan2(distanceY, distanceX)) * force };
+        return (forceVector);
+
+    }
+    var canvas = document.getElementById('canvasM');
+    let ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    var mouseC = Matter.MouseConstraint;
+    var canvmouse = Matter.Mouse.create(document.getElementById('canvasM'));
+    Matter.Mouse.setScale(canvmouse, { x: 2, y: 2 });
+
+    let mouseControl = mouseC.create(engine, {
+        mouse: canvmouse
+    });
+
+    Composite.add(world, mouseControl);
+
+    // Events.on(engine, "afterUpdate", () => {
+    //     var bodies = Composite.allBodies(engine.world);
+    //     bodies.forEach((val,i,arr) => {
+    //         let fv = calculateGravity(centerBody,val);
+    //     });
+    // })
+    (function render() {
+        ctx.clearRect(0, 0, 1000, 1000)
+        var bodies = Composite.allBodies(engine.world);
+
+        window.requestAnimationFrame(render);
+
+        ctx.beginPath();
+
+        for (var i = 0; i < bodies.length; i += 1) {
+            var vertices = bodies[i].vertices;
+
+            ctx.moveTo(vertices[0].x, vertices[0].y);
+
+            for (var j = 1; j < vertices.length; j += 1) {
+                ctx.lineTo(vertices[j].x, vertices[j].y);
+            }
+            ctx.lineWidth = 3;
+            ctx.fill = '#fff';
+            ctx.strokeStyle = "#000"
+            for(let j = 0; j < bodies.length; j++){
+                if(j!==i){
+                    // console.log("a")
+                    let fv = calculateGravity(bodies[j], bodies[i]);
+                    Body.applyForce(bodies[i], bodies[i].position, fv)
+                }
+            }
+            let fv = calculateGravity(centerBody, bodies[i]);
+            // console.log(fv)
+            
+            ctx.lineTo(vertices[0].x, vertices[0].y);
+            ctx.moveTo(bodies[i].position.x, bodies[i].position.y);
+            ctx.lineTo(bodies[i].position.x + Body.getVelocity(bodies[i]).x, bodies[i].position.y + Body.getVelocity(bodies[i]).y)
+            ctx.stroke();
+
+            // Body.applyForce(bodies[i], bodies[i].position, fv)
+        }
+        // ctx.endPath()
+        // path.push(circleA.position);
+        // // console.log(path.length)
+        // ctx.beginPath()
+        ctx.moveTo(path[0].x,path[0].y);
+        ctx.lineTo(0,0);
+        path.forEach((val,i,arr)=>{
+            // console.log(val.x)
+            ctx.lineTo(val.x,val.y)
+            
+        })
+        ctx.lineWidth = 3;
+        // ctx.strokeStyle = "#F00"
+        ctx.stroke()
+        // path.push(circleA.position);
+
+
+        Matter.Engine.update(engine,1000/60);
+    })();
+
+
+
+    // render.mouse = mouse;
+
+
+</script>
